@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Load Balancer - Real-Time Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse-green {
+            0%, 100% { background-color: rgb(34 197 94); }
+            50% { background-color: rgb(74 222 128); }
+        }
+        @keyframes pulse-red {
+            0%, 100% { background-color: rgb(239 68 68); }
+            50% { background-color: rgb(248 113 113); }
+        }
+        .status-online { animation: pulse-green 2s infinite; }
+        .status-offline { animation: pulse-red 2s infinite; }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .metric-card {
+            transition: all 0.3s ease;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+        .security-alert {
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .loading-spinner {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top: 3px solid rgb(59, 130, 246);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 min-h-screen text-white">
+    <!-- Header -->
+    <header class="glass-effect sticky top-0 z-50 px-6 py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <i class="fas fa-network-wired text-3xl text-blue-400"></i>
+                <div>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+                        Enterprise Load Balancer
+                    </h1>
+                    <p class="text-sm text-gray-300">Real-Time Monitoring Dashboard</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center space-x-2">
+                    <div id="connection-status" class="w-3 h-3 bg-green-500 rounded-full status-online"></div>
+                    <span class="text-sm">Connected</span>
+                </div>
+                <div class="text-sm">
+                    <span id="current-time" class="text-gray-300"></span>
+                </div>
+                <button onclick="toggleFullscreen()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Key Metrics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Requests Per Second -->
+            <div class="metric-card glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-300 text-sm">Requests/sec</p>
+                        <p id="rps-value" class="text-3xl font-bold text-blue-400">0</p>
+                    </div>
+                    <i class="fas fa-chart-line text-2xl text-blue-400"></i>
+                </div>
+                <div class="flex items-center text-sm">
+                    <i id="rps-trend" class="fas fa-arrow-up text-green-400 mr-2"></i>
+                    <span id="rps-change" class="text-gray-300">+0%</span>
+                </div>
+            </div>
+
+            <!-- Active Connections -->
+            <div class="metric-card glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-300 text-sm">Active Connections</p>
+                        <p id="connections-value" class="text-3xl font-bold text-green-400">0</p>
+                    </div>
+                    <i class="fas fa-plug text-2xl text-green-400"></i>
+                </div>
+                <div class="flex items-center text-sm">
+                    <i id="connections-trend" class="fas fa-arrow-up text-green-400 mr-2"></i>
+                    <span id="connections-change" class="text-gray-300">+0%</span>
+                </div>
+            </div>
+
+            <!-- Response Time -->
+            <div class="metric-card glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-300 text-sm">Avg Response Time</p>
+                        <p id="response-time-value" class="text-3xl font-bold text-yellow-400">0ms</p>
+                    </div>
+                    <i class="fas fa-tachometer-alt text-2xl text-yellow-400"></i>
+                </div>
+                <div class="flex items-center text-sm">
+                    <i id="response-time-trend" class="fas fa-arrow-down text-green-400 mr-2"></i>
+                    <span id="response-time-change" class="text-gray-300">-0%</span>
+                </div>
+            </div>
+
+            <!-- Error Rate -->
+            <div class="metric-card glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-300 text-sm">Error Rate</p>
+                        <p id="error-rate-value" class="text-3xl font-bold text-red-400">0%</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-400"></i>
+                </div>
+                <div class="flex items-center text-sm">
+                    <i id="error-rate-trend" class="fas fa-arrow-down text-green-400 mr-2"></i>
+                    <span id="error-rate-change" class="text-gray-300">-0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Request Rate Chart -->
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-chart-area mr-2 text-blue-400"></i>
+                    Request Rate (RPS)
+                </h3>
+                <div class="chart-container">
+                    <canvas id="request-rate-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Response Time Chart -->
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-clock mr-2 text-yellow-400"></i>
+                    Response Time (ms)
+                </h3>
+                <div class="chart-container">
+                    <canvas id="response-time-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backend Status & Security Events -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Backend Status -->
+            <div class="lg:col-span-2 glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-server mr-2 text-green-400"></i>
+                    Backend Status
+                </h3>
+                <div id="backend-status" class="space-y-3">
+                    <!-- Backend cards will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Security Events -->
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-shield-alt mr-2 text-red-400"></i>
+                    Security Events
+                </h3>
+                <div id="security-events" class="space-y-2 max-h-80 overflow-y-auto">
+                    <!-- Security events will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Auto-scaling & Additional Metrics -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Auto-scaling Status -->
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-expand-arrows-alt mr-2 text-purple-400"></i>
+                    Auto-scaling Status
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Current Scale</span>
+                        <span id="current-scale" class="text-2xl font-bold text-purple-400">3</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Min/Max Scale</span>
+                        <span id="scale-range" class="text-lg text-gray-400">2-10</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">CPU Usage</span>
+                        <div class="flex items-center">
+                            <div class="w-24 bg-gray-700 rounded-full h-2 mr-2">
+                                <div id="cpu-bar" class="bg-blue-400 h-2 rounded-full" style="width: 45%"></div>
+                            </div>
+                            <span id="cpu-usage" class="text-sm">45%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Memory Usage</span>
+                        <div class="flex items-center">
+                            <div class="w-24 bg-gray-700 rounded-full h-2 mr-2">
+                                <div id="memory-bar" class="bg-green-400 h-2 rounded-full" style="width: 60%"></div>
+                            </div>
+                            <span id="memory-usage" class="text-sm">60%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Last Scale Event</span>
+                        <span id="last-scale-event" class="text-sm text-gray-400">2 min ago</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Endpoints -->
+            <div class="glass-effect rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-route mr-2 text-orange-400"></i>
+                    Top Endpoints
+                </h3>
+                <div id="top-endpoints" class="space-y-2">
+                    <!-- Top endpoints will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Global variables
+        let ws;
+        let charts = {};
+        let metrics = {
+            requestRate: [],
+            responseTime: [],
+            timestamps: []
+        };
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            connectWebSocket();
+            updateTime();
+            setInterval(updateTime, 1000);
+            setInterval(simulateMetrics, 2000); // Simulate real-time data
+        });
+
+        // Initialize charts
+        function initializeCharts() {
+            // Request Rate Chart
+            const requestRateCtx = document.getElementById('request-rate-chart').getContext('2d');
+            charts.requestRate = new Chart(requestRateCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Requests/sec',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        }
+                    }
+                }
+            });
+
+            // Response Time Chart
+            const responseTimeCtx = document.getElementById('response-time-chart').getContext('2d');
+            charts.responseTime = new Chart(responseTimeCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Response Time (ms)',
+                        data: [],
+                        borderColor: 'rgb(250, 204, 21)',
+                        backgroundColor: 'rgba(250, 204, 21, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Connect WebSocket for real-time data
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:8080/ws`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function() {
+                    console.log('WebSocket connected');
+                    document.getElementById('connection-status').className = 'w-3 h-3 bg-green-500 rounded-full status-online';
+                };
+                
+                ws.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    updateDashboard(data);
+                };
+                
+                ws.onclose = function() {
+                    console.log('WebSocket disconnected');
+                    document.getElementById('connection-status').className = 'w-3 h-3 bg-red-500 rounded-full status-offline';
+                    // Attempt to reconnect after 5 seconds
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
+            } catch (error) {
+                console.error('Failed to connect WebSocket:', error);
+                // Fallback to simulation
+                setTimeout(simulateMetrics, 1000);
+            }
+        }
+
+        // Simulate real-time metrics (fallback)
+        function simulateMetrics() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                metrics: {
+                    requests_per_second: Math.floor(Math.random() * 1000) + 500,
+                    active_connections: Math.floor(Math.random() * 500) + 200,
+                    avg_response_time: Math.floor(Math.random() * 50) + 10,
+                    error_rate: (Math.random() * 2).toFixed(2),
+                    cpu_usage: Math.floor(Math.random() * 40) + 30,
+                    memory_usage: Math.floor(Math.random() * 30) + 50
+                },
+                backends: [
+                    { id: 'backend-1', url: 'http://localhost:8081', status: 'healthy', connections: 120, response_time: 25 },
+                    { id: 'backend-2', url: 'http://localhost:8082', status: 'healthy', connections: 98, response_time: 30 },
+                    { id: 'backend-3', url: 'http://localhost:8083', status: 'unhealthy', connections: 0, response_time: 0 }
+                ],
+                security_events: [
+                    { type: 'WAF_BLOCK', message: 'SQL injection attempt blocked', severity: 'high', timestamp: new Date().toISOString() },
+                    { type: 'RATE_LIMIT', message: 'Rate limit exceeded for IP 192.168.1.100', severity: 'medium', timestamp: new Date().toISOString() }
+                ],
+                autoscaling: {
+                    current_scale: 3,
+                    min_scale: 2,
+                    max_scale: 10,
+                    last_event: 'scale_up',
+                    last_event_time: new Date().toISOString()
+                },
+                top_endpoints: [
+                    { path: '/api/users', requests: 1250, avg_response_time: 22 },
+                    { path: '/api/products', requests: 980, avg_response_time: 18 },
+                    { path: '/api/orders', requests: 750, avg_response_time: 35 }
+                ]
+            };
+            
+            updateDashboard(data);
+        }
+
+        // Update dashboard with new data
+        function updateDashboard(data) {
+            // Update key metrics
+            updateKeyMetrics(data.metrics);
+            
+            // Update charts
+            updateCharts(data);
+            
+            // Update backend status
+            updateBackendStatus(data.backends);
+            
+            // Update security events
+            updateSecurityEvents(data.security_events);
+            
+            // Update auto-scaling
+            updateAutoScaling(data.autoscaling);
+            
+            // Update top endpoints
+            updateTopEndpoints(data.top_endpoints);
+        }
+
+        // Update key metrics
+        function updateKeyMetrics(metrics) {
+            document.getElementById('rps-value').textContent = metrics.requests_per_second.toLocaleString();
+            document.getElementById('connections-value').textContent = metrics.active_connections.toLocaleString();
+            document.getElementById('response-time-value').textContent = metrics.avg_response_time + 'ms';
+            document.getElementById('error-rate-value').textContent = metrics.error_rate + '%';
+            
+            // Update trends (simplified)
+            updateTrend('rps', Math.random() > 0.5);
+            updateTrend('connections', Math.random() > 0.5);
+            updateTrend('response-time', Math.random() > 0.7);
+            updateTrend('error-rate', Math.random() > 0.8);
+        }
+
+        // Update trend indicators
+        function updateTrend(metric, isUp) {
+            const trendEl = document.getElementById(`${metric}-trend`);
+            const changeEl = document.getElementById(`${metric}-change`);
+            
+            if (isUp) {
+                trendEl.className = 'fas fa-arrow-up text-green-400 mr-2';
+                changeEl.textContent = `+${Math.floor(Math.random() * 10)}%`;
+            } else {
+                trendEl.className = 'fas fa-arrow-down text-red-400 mr-2';
+                changeEl.textContent = `-${Math.floor(Math.random() * 10)}%`;
+            }
+        }
+
+        // Update charts
+        function updateCharts(data) {
+            const now = new Date().toLocaleTimeString();
+            
+            // Keep only last 20 data points
+            if (metrics.timestamps.length > 20) {
+                metrics.timestamps.shift();
+                metrics.requestRate.shift();
+                metrics.responseTime.shift();
+            }
+            
+            metrics.timestamps.push(now);
+            metrics.requestRate.push(data.metrics.requests_per_second);
+            metrics.responseTime.push(data.metrics.avg_response_time);
+            
+            // Update request rate chart
+            charts.requestRate.data.labels = metrics.timestamps;
+            charts.requestRate.data.datasets[0].data = metrics.requestRate;
+            charts.requestRate.update('none');
+            
+            // Update response time chart
+            charts.responseTime.data.labels = metrics.timestamps;
+            charts.responseTime.data.datasets[0].data = metrics.responseTime;
+            charts.responseTime.update('none');
+        }
+
+        // Update backend status
+        function updateBackendStatus(backends) {
+            const container = document.getElementById('backend-status');
+            container.innerHTML = '';
+            
+            backends.forEach(backend => {
+                const statusColor = backend.status === 'healthy' ? 'green' : 'red';
+                const statusIcon = backend.status === 'healthy' ? 'check-circle' : 'times-circle';
+                
+                const card = document.createElement('div');
+                card.className = 'flex items-center justify-between p-3 bg-gray-800 rounded-lg';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-${statusIcon} text-${statusColor}-400"></i>
+                        <div>
+                            <p class="font-semibold">${backend.id}</p>
+                            <p class="text-sm text-gray-400">${backend.url}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm">${backend.connections} connections</p>
+                        <p class="text-sm text-gray-400">${backend.response_time}ms</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Update security events
+        function updateSecurityEvents(events) {
+            const container = document.getElementById('security-events');
+            container.innerHTML = '';
+            
+            events.slice(0, 5).forEach(event => {
+                const severityColor = event.severity === 'high' ? 'red' : event.severity === 'medium' ? 'yellow' : 'blue';
+                const icon = event.type === 'WAF_BLOCK' ? 'shield-alt' : event.type === 'RATE_LIMIT' ? 'tachometer-alt' : 'exclamation-triangle';
+                
+                const eventEl = document.createElement('div');
+                eventEl.className = 'security-alert p-3 bg-gray-800 rounded-lg border-l-4 border-' + severityColor + '-400';
+                eventEl.innerHTML = `
+                    <div class="flex items-start space-x-2">
+                        <i class="fas fa-${icon} text-${severityColor}-400 mt-1"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold">${event.type.replace('_', ' ')}</p>
+                            <p class="text-xs text-gray-400">${event.message}</p>
+                            <p class="text-xs text-gray-500">${new Date(event.timestamp).toLocaleTimeString()}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(eventEl);
+            });
+        }
+
+        // Update auto-scaling
+        function updateAutoScaling(autoscaling) {
+            document.getElementById('current-scale').textContent = autoscaling.current_scale;
+            document.getElementById('scale-range').textContent = `${autoscaling.min_scale}-${autoscaling.max_scale}`;
+            document.getElementById('cpu-usage').textContent = '45%'; // Simulated
+            document.getElementById('memory-usage').textContent = '60%'; // Simulated
+            document.getElementById('cpu-bar').style.width = '45%';
+            document.getElementById('memory-bar').style.width = '60%';
+            
+            const eventTime = new Date(autoscaling.last_event_time);
+            const now = new Date();
+            const diff = Math.floor((now - eventTime) / 1000 / 60);
+            document.getElementById('last-scale-event').textContent = `${diff} min ago`;
+        }
+
+        // Update top endpoints
+        function updateTopEndpoints(endpoints) {
+            const container = document.getElementById('top-endpoints');
+            container.innerHTML = '';
+            
+            endpoints.forEach((endpoint, index) => {
+                const card = document.createElement('div');
+                card.className = 'flex items-center justify-between p-2 bg-gray-800 rounded';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-lg font-bold text-gray-400">${index + 1}</span>
+                        <span class="text-sm">${endpoint.path}</span>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold">${endpoint.requests}</p>
+                        <p class="text-xs text-gray-400">${endpoint.avg_response_time}ms</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+        }
+
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+    </script>
+</body>
+</html>

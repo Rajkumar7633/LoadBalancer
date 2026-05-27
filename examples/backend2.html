@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend 2 - Load Balancer Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .backend-id {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .status {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        .metrics {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .metric {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="backend-id">⚡ Backend 2</div>
+        <div class="status pulse">✅ Healthy & Ready</div>
+        
+        <div class="metrics">
+            <div class="metric">
+                <strong>Server:</strong> Nginx HTTP Server
+            </div>
+            <div class="metric">
+                <strong>Port:</strong> 8083
+            </div>
+            <div class="metric">
+                <strong>Status:</strong> <span style="color: #4ade80;">Active</span>
+            </div>
+            <div class="metric">
+                <strong>Response Time:</strong> <span id="response-time">30ms</span>
+            </div>
+            <div class="metric">
+                <strong>Request Count:</strong> <span id="request-count">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let requestCount = 0;
+        
+        // Update metrics
+        function updateMetrics() {
+            requestCount++;
+            document.getElementById('request-count').textContent = requestCount;
+            document.getElementById('response-time').textContent = (25 + Math.random() * 15).toFixed(0) + 'ms';
+        }
+        
+        // Update on each page load
+        updateMetrics();
+        
+        // Simulate real-time updates
+        setInterval(updateMetrics, 4000);
+    </script>
+</body>
+</html>

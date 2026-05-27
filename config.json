@@ -1,0 +1,331 @@
+{
+  "port": 8080,
+  "request_timeout": 30,
+  "tls": {
+    "cert_file": "",
+    "key_file": ""
+  },
+  "backends": [
+    {
+      "url": "http://localhost:8081",
+      "weight": 3,
+      "max_connections": 100,
+      "health_check_path": "/health",
+      "timeout": 5000000000,
+      "draining": false
+    },
+    {
+      "url": "http://localhost:8082",
+      "weight": 2,
+      "max_connections": 100,
+      "health_check_path": "/health",
+      "timeout": 5000000000,
+      "draining": false
+    },
+    {
+      "url": "http://localhost:8083",
+      "weight": 1,
+      "max_connections": 50,
+      "health_check_path": "/health",
+      "timeout": 5000000000,
+      "draining": false
+    }
+  ],
+  "health_check": {
+    "interval": 10000000000,
+    "timeout": 2000000000,
+    "failure_threshold": 3,
+    "success_threshold": 2,
+    "path": "/health"
+  },
+  "rate_limit": {
+    "requests_per_second": 100,
+    "burst_size": 200,
+    "window": 60000000000
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "output": "stdout",
+    "structured": true
+  },
+  "metrics": {
+    "port": 9090,
+    "path": "/metrics"
+  },
+  "routing": {
+    "algorithm": "weighted",
+    "sticky_sessions": true,
+    "cookie_name": "lb_session",
+    "adaptive_routing": true,
+    "circuit_breaker": true,
+    "failure_threshold": 5
+  },
+  "pool": {
+    "max_idle_conns": 100,
+    "max_idle_conns_per_host": 10,
+    "idle_conn_timeout": 90000000000
+  },
+  "content_based_routing": {
+    "enabled": true,
+    "rules": [
+      {
+        "name": "api-routes",
+        "priority": 100,
+        "condition": {
+          "path_match": {
+            "type": "prefix",
+            "values": [
+              "/api"
+            ]
+          }
+        },
+        "backend_refs": [
+          "http://localhost:8081"
+        ]
+      },
+      {
+        "name": "admin-routes",
+        "priority": 200,
+        "condition": {
+          "path_match": {
+            "type": "prefix",
+            "values": [
+              "/admin"
+            ]
+          }
+        },
+        "backend_refs": [
+          "http://localhost:8082"
+        ]
+      }
+    ]
+  },
+  "consistent_hash": {
+    "enabled": true,
+    "replicas": 150,
+    "key_type": "user_id"
+  },
+  "ip_hash": {
+    "enabled": false,
+    "weighted": true
+  },
+  "circuit_breaker": {
+    "enabled": true,
+    "failure_threshold": 5,
+    "success_threshold": 3,
+    "timeout_threshold": 60000000000,
+    "recovery_timeout": 30000000000,
+    "max_half_open_requests": 10,
+    "slow_call_threshold": 1000000000,
+    "slow_call_rate_threshold": 0.5
+  },
+  "retry": {
+    "enabled": true,
+    "max_retries": 3,
+    "initial_delay": 100000000,
+    "max_delay": 5000000000,
+    "multiplier": 2.0,
+    "jitter": true,
+    "retryable_status": [
+      502,
+      503,
+      504,
+      429
+    ],
+    "retryable_methods": [
+      "GET",
+      "HEAD",
+      "PUT",
+      "DELETE",
+      "OPTIONS",
+      "TRACE"
+    ]
+  },
+  "request_mirroring": {
+    "enabled": true,
+    "percentage": 0.1,
+    "mirror_backends": [
+      "http://localhost:8083"
+    ],
+    "timeout": 5000000000,
+    "headers_to_copy": [
+      "User-Agent",
+      "Accept",
+      "Accept-Language"
+    ],
+    "async": true,
+    "buffer_size": 32768
+  },
+  "slow_start": {
+    "enabled": true,
+    "duration": 300000000000,
+    "initial_weight": 0.1,
+    "step_interval": 30000000000,
+    "weight_increment": 0.1
+  },
+  "priority_queue": {
+    "enabled": true,
+    "queue_size": 1000,
+    "expiry_time": 30000000000,
+    "priority_headers": {
+      "X-Priority-Free": "free",
+      "X-Priority-Basic": "basic",
+      "X-Priority-Premium": "premium",
+      "X-Priority-VIP": "vip"
+    },
+    "priority_paths": {
+      "/health": "free",
+      "/api/v1/": "basic",
+      "/api/v2/": "premium",
+      "/admin/": "vip"
+    },
+    "default_priority": "basic",
+    "load_shedding": {
+      "enabled": true,
+      "threshold": 0.8,
+      "shed_priority": "free",
+      "shed_percentage": 0.5
+    }
+  },
+  "mtls": {
+    "enabled": false,
+    "ca_cert_file": "",
+    "client_cert_file": "",
+    "client_key_file": "",
+    "server_cert_file": "",
+    "server_key_file": "",
+    "skip_verify": false,
+    "client_auth": "none"
+  },
+  "grpc": {
+    "enabled": false,
+    "services": [
+      "UserService",
+      "OrderService"
+    ],
+    "max_recv_msg_size": 4194304,
+    "max_send_msg_size": 4194304,
+    "compression": "gzip",
+    "enable_reflection": true,
+    "enable_health": true,
+    "enable_tracing": false
+  },
+  "websocket": {
+    "enabled": false,
+    "origin_check": true,
+    "allowed_origins": [
+      "*"
+    ],
+    "ping_interval": 54000000000,
+    "pong_wait": 60000000000,
+    "write_wait": 10000000000,
+    "max_message_size": 524288,
+    "read_buffer_size": 1024,
+    "write_buffer_size": 1024,
+    "enable_compression": true
+  },
+  "response_cache": {
+    "enabled": true,
+    "ttl": 300000000000,
+    "max_size": 104857600,
+    "max_entries": 10000,
+    "cache_key_header": "X-Cache-Key",
+    "invalidation_header": "X-Cache-Invalidate"
+  },
+  "geo_routing": {
+    "enabled": true,
+    "database_path": "/etc/geoip/GeoLite2-Country.mmdb",
+    "cache_expiry": 3600000000000,
+    "default_region": "US",
+    "fallback_backend": "http://localhost:8081"
+  },
+  "adaptive_routing": {
+    "enabled": true,
+    "algorithm": "predictive",
+    "window_size": 100,
+    "update_interval": 30000000000,
+    "response_time_weight": 0.4,
+    "error_rate_weight": 0.3,
+    "connection_weight": 0.2,
+    "prediction_horizon": 300000000000,
+    "min_confidence": 0.7,
+    "adaptation_threshold": 0.1
+  },
+  "transformation": {
+    "enabled": true,
+    "max_body_size": 1048576,
+    "timeout": 10000000000,
+    "preserve_original": false,
+    "log_transformations": true
+  },
+  "blue_green": {
+    "enabled": true,
+    "default_environment": "blue",
+    "health_check_interval": 30000000000,
+    "deployment_timeout": 600000000000,
+    "rollback_timeout": 300000000000,
+    "auto_promotion": true,
+    "health_threshold": 0.95,
+    "traffic_shift_mode": "gradual"
+  },
+  "api_gateway": {
+    "enabled": true,
+    "default_quota": {
+      "time_window": 3600000000000,
+      "default_limit": 10000,
+      "reset_policy": "rolling"
+    },
+    "rate_limit_config": {
+      "algorithm": "token_bucket",
+      "default_rate": 100,
+      "default_burst": 200,
+      "window_duration": 60000000000,
+      "cleanup_interval": 600000000000
+    },
+    "auth_required": true,
+    "key_validation": true,
+    "quota_enforcement": true,
+    "metrics_enabled": true
+  },
+  "distributed_tracing": {
+    "enabled": true,
+    "service_name": "advanced-loadbalancer",
+    "sampling_rate": 0.1,
+    "flush_interval": 5000000000,
+    "max_spans_per_trace": 1000,
+    "propagation_format": "w3c"
+  },
+  "cache": {
+    "enabled": true,
+    "default_ttl": 300000000000,
+    "max_ttl": 86400000000000,
+    "max_size": 104857600,
+    "max_entries": 10000,
+    "cacheable_methods": [
+      "GET",
+      "HEAD"
+    ],
+    "cacheable_status": [
+      200,
+      203,
+      300,
+      301,
+      302,
+      307,
+      410
+    ],
+    "skip_cache_headers": [
+      "Authorization",
+      "Cookie",
+      "Set-Cookie"
+    ],
+    "vary_headers": [
+      "Accept",
+      "Accept-Encoding",
+      "Accept-Language"
+    ],
+    "key_generator": "url+headers",
+    "compression": true
+  }
+}

@@ -1,0 +1,503 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise-loadbalancer
+  namespace: loadbalancer
+  labels:
+    app: enterprise-loadbalancer
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  selector:
+    matchLabels:
+      app: enterprise-loadbalancer
+  template:
+    metadata:
+      labels:
+        app: enterprise-loadbalancer
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: loadbalancer-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+      - name: loadbalancer
+        image: ghcr.io/your-org/loadbalancer:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: https
+          containerPort: 8443
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        - name: dashboard
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: METRICS_ENABLED
+          value: "true"
+        - name: TRACING_ENABLED
+          value: "true"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: loadbalancer-secrets
+              key: redis-url
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: loadbalancer-secrets
+              key: database-url
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        - name: tls-certs
+          mountPath: /etc/tls
+          readOnly: true
+        - name: logs
+          mountPath: /var/log/loadbalancer
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      - name: dashboard
+        image: ghcr.io/your-org/loadbalancer-dashboard:latest
+        imagePullPolicy: Always
+        ports:
+        - name: dashboard-http
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: LOADBALANCER_URL
+          value: "http://localhost:8080"
+        - name: METRICS_URL
+          value: "http://localhost:9090"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: dashboard-http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: dashboard-http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: loadbalancer-config
+      - name: tls-certs
+        secret:
+          secretName: loadbalancer-tls
+      - name: logs
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "loadbalancer"
+        effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - enterprise-loadbalancer
+              topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer-service
+  namespace: loadbalancer
+  labels:
+    app: enterprise-loadbalancer
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  sessionAffinity: None
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: https
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app: enterprise-loadbalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: loadbalancer
+  labels:
+    app: enterprise-loadbalancer
+spec:
+  type: ClusterIP
+  ports:
+  - name: dashboard
+    port: 80
+    targetPort: dashboard-http
+    protocol: TCP
+  selector:
+    app: enterprise-loadbalancer
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: loadbalancer-hpa
+  namespace: loadbalancer
+  labels:
+    app: enterprise-loadbalancer
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: enterprise-loadbalancer
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  - type: External
+    external:
+      metric:
+        name: prometheus_http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "50000"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 5
+        periodSeconds: 15
+      selectPolicy: Max
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dashboard-hpa
+  namespace: loadbalancer
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: enterprise-loadbalancer
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: loadbalancer-pdb
+  namespace: loadbalancer
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: enterprise-loadbalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: loadbalancer-sa
+  namespace: loadbalancer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: loadbalancer-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: loadbalancer-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: loadbalancer-role
+subjects:
+- kind: ServiceAccount
+  name: loadbalancer-sa
+  namespace: loadbalancer
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: loadbalancer-netpol
+  namespace: loadbalancer
+spec:
+  podSelector:
+    matchLabels:
+      app: enterprise-loadbalancer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8081
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: backend-services
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+    - protocol: TCP
+      port: 8082
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadbalancer-config
+  namespace: loadbalancer
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      read_timeout: 30s
+      write_timeout: 30s
+      idle_timeout: 60s
+    
+    backends:
+      - url: http://backend-service-1:8080
+        weight: 3
+        max_connections: 1000
+        health_check_path: /health
+        timeout: 30s
+      - url: http://backend-service-2:8080
+        weight: 2
+        max_connections: 1000
+        health_check_path: /health
+        timeout: 30s
+      - url: http://backend-service-3:8080
+        weight: 2
+        max_connections: 1000
+        health_check_path: /health
+        timeout: 30s
+    
+    routing:
+      algorithm: weighted
+      adaptive_routing: true
+      circuit_breaker: true
+      retry_attempts: 3
+      retry_backoff: 1s
+    
+    security:
+      enabled: true
+      rate_limiting:
+        enabled: true
+        requests_per_second: 100000
+        burst: 200000
+      authentication:
+        enabled: true
+        jwt_secret: "${JWT_SECRET}"
+        api_keys: []
+      waf:
+        enabled: true
+        mode: block
+      ip_filtering:
+        enabled: true
+        blacklisted_ips: []
+        whitelisted_ips: []
+    
+    tls:
+      enabled: true
+      cert_file: /etc/tls/tls.crt
+      key_file: /etc/tls/tls.key
+      auto_renewal: true
+    
+    autoscaling:
+      enabled: true
+      min_scale: 3
+      max_scale: 50
+      cpu_threshold: 70.0
+      memory_threshold: 80.0
+      scale_up_cooldown: 30s
+      scale_down_cooldown: 60s
+    
+    metrics:
+      enabled: true
+      port: 9090
+      path: /metrics
+    
+    logging:
+      level: info
+      format: json
+      output: stdout
+    
+    redis:
+      url: "${REDIS_URL}"
+      pool_size: 100
+    
+    tracing:
+      enabled: true
+      jaeger_endpoint: http://jaeger-collector:14268/api/traces
