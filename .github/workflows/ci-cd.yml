@@ -56,10 +56,11 @@ jobs:
         run: go vet ./...
 
       - name: Run static analysis
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.64.8
           args: --timeout=5m
+          skip-cache: true
 
       - name: Run security scan
         uses: securego/gosec@master
