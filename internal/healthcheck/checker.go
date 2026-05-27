@@ -172,14 +172,16 @@ func (c *Checker) performHTTPCheck(backend backend.Backend) (bool, time.Duration
 func (c *Checker) performTCPCheck(backend backend.Backend) (bool, time.Duration, error) {
 	startTime := time.Now()
 
-	address := fmt.Sprintf("%s:%s", backend.GetURL().Hostname(), backend.GetURL().Port())
-	if backend.GetURL().Port() == "" {
+	host := backend.GetURL().Hostname()
+	port := backend.GetURL().Port()
+	if port == "" {
 		if backend.GetURL().Scheme == "https" {
-			address = fmt.Sprintf("%s:443", backend.GetURL().Hostname())
+			port = "443"
 		} else {
-			address = fmt.Sprintf("%s:80", backend.GetURL().Hostname())
+			port = "80"
 		}
 	}
+	address := net.JoinHostPort(host, port)
 
 	conn, err := net.DialTimeout("tcp", address, c.config.Timeout)
 	if err != nil {

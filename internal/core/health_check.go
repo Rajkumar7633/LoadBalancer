@@ -14,12 +14,12 @@ import (
 
 // HealthCheckService provides comprehensive health check endpoints
 type HealthCheckService struct {
-	checks     map[string]HealthCheck
-	config     HealthCheckConfig
-	logger     *zap.Logger
-	server     *http.Server
-	mu         sync.RWMutex
-	startTime  time.Time
+	checks    map[string]HealthCheck
+	config    HealthCheckConfig
+	logger    *zap.Logger
+	server    *http.Server
+	mu        sync.RWMutex
+	startTime time.Time
 }
 
 // HealthCheckConfig contains health check configuration
@@ -45,30 +45,30 @@ type HealthCheckResult struct {
 
 // HealthResponse represents the overall health response
 type HealthResponse struct {
-	Status    string                        `json:"status"`
-	Timestamp time.Time                     `json:"timestamp"`
-	Uptime    time.Duration                 `json:"uptime"`
-	Version   string                        `json:"version"`
-	Checks    map[string]HealthCheckResult  `json:"checks,omitempty"`
-	System    SystemInfo                    `json:"system"`
+	Status    string                       `json:"status"`
+	Timestamp time.Time                    `json:"timestamp"`
+	Uptime    time.Duration                `json:"uptime"`
+	Version   string                       `json:"version"`
+	Checks    map[string]HealthCheckResult `json:"checks,omitempty"`
+	System    SystemInfo                   `json:"system"`
 }
 
 // SystemInfo contains system information
 type SystemInfo struct {
-	GoVersion    string    `json:"go_version"`
-	OS           string    `json:"os"`
-	Arch         string    `json:"arch"`
-	NumCPU       int       `json:"num_cpu"`
-	NumGoroutine int       `json:"num_goroutine"`
+	GoVersion    string     `json:"go_version"`
+	OS           string     `json:"os"`
+	Arch         string     `json:"arch"`
+	NumCPU       int        `json:"num_cpu"`
+	NumGoroutine int        `json:"num_goroutine"`
 	MemoryUsage  MemoryInfo `json:"memory_usage"`
 }
 
 // MemoryInfo contains memory information
 type MemoryInfo struct {
-	Alloc      uint64  `json:"alloc"`
-	TotalAlloc uint64  `json:"total_alloc"`
-	Sys        uint64  `json:"sys"`
-	NumGC      uint32  `json:"num_gc"`
+	Alloc      uint64 `json:"alloc"`
+	TotalAlloc uint64 `json:"total_alloc"`
+	Sys        uint64 `json:"sys"`
+	NumGC      uint32 `json:"num_gc"`
 }
 
 // NewHealthCheckService creates a new health check service
@@ -142,7 +142,7 @@ func (hcs *HealthCheckService) Stop(ctx context.Context) error {
 	}
 
 	hcs.logger.Info("Stopping health check service")
-	
+
 	return hcs.server.Shutdown(ctx)
 }
 
@@ -170,15 +170,15 @@ func (hcs *HealthCheckService) registerDefaultChecks() {
 
 	// Goroutine check
 	hcs.AddCheck(&GoroutineHealthCheck{
-		name:   "goroutines",
-		logger: hcs.logger,
+		name:          "goroutines",
+		logger:        hcs.logger,
 		maxGoroutines: 1000,
 	})
 
 	// CPU check
 	hcs.AddCheck(&CPUHealthCheck{
-		name:   "cpu",
-		logger: hcs.logger,
+		name:        "cpu",
+		logger:      hcs.logger,
 		maxCPUUsage: 90.0,
 	})
 }
@@ -230,7 +230,7 @@ func (hcs *HealthCheckService) handleHealth(w http.ResponseWriter, r *http.Reque
 	response := hcs.createHealthResponse(ctx, false)
 
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	if response.Status == "healthy" {
 		w.WriteHeader(http.StatusOK)
 	} else {
@@ -299,7 +299,7 @@ func (hcs *HealthCheckService) handleDetailedHealth(w http.ResponseWriter, r *ht
 	response := hcs.createHealthResponse(ctx, true)
 
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	if response.Status == "healthy" {
 		w.WriteHeader(http.StatusOK)
 	} else {
@@ -414,10 +414,10 @@ func (m *MemoryHealthCheck) Check(ctx context.Context) HealthStatus {
 			Status:  "unhealthy",
 			Message: fmt.Sprintf("Memory usage too high: %d bytes", memStats.Alloc),
 			Details: map[string]interface{}{
-				"alloc":      memStats.Alloc,
+				"alloc":       memStats.Alloc,
 				"total_alloc": memStats.TotalAlloc,
-				"sys":        memStats.Sys,
-				"max_memory": maxMemory,
+				"sys":         memStats.Sys,
+				"max_memory":  maxMemory,
 			},
 			Time: time.Now(),
 		}
@@ -491,7 +491,7 @@ func (c *CPUHealthCheck) Check(ctx context.Context) HealthStatus {
 			Status:  "unhealthy",
 			Message: fmt.Sprintf("CPU usage too high: %.2f%%", cpuUsage),
 			Details: map[string]interface{}{
-				"cpu_usage":    cpuUsage,
+				"cpu_usage":     cpuUsage,
 				"max_cpu_usage": c.maxCPUUsage,
 			},
 			Time: time.Now(),
@@ -522,7 +522,7 @@ func (d *DatabaseHealthCheck) Name() string {
 func (d *DatabaseHealthCheck) Check(ctx context.Context) HealthStatus {
 	// Simplified database health check
 	// In a real implementation, this would ping the database
-	
+
 	return HealthStatus{
 		Status:  "healthy",
 		Message: "Database connection is healthy",

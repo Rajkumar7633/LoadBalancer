@@ -16,19 +16,19 @@ import (
 
 // Monitoring provides comprehensive monitoring and metrics
 type Monitoring struct {
-	logger          *zap.Logger
-	config          MonitoringConfig
-	metrics         *Metrics
-	healthChecker   *HealthChecker
-	alertManager    *AlertManager
-	perfMonitor     *PerformanceMonitor
-	
+	logger        *zap.Logger
+	config        MonitoringConfig
+	metrics       *Metrics
+	healthChecker *HealthChecker
+	alertManager  *AlertManager
+	perfMonitor   *PerformanceMonitor
+
 	// Runtime stats
-	startTime       time.Time
-	requestCount    int64
-	errorCount      int64
-	
-	mu              sync.RWMutex
+	startTime    time.Time
+	requestCount int64
+	errorCount   int64
+
+	mu sync.RWMutex
 }
 
 // MonitoringConfig contains monitoring configuration
@@ -39,41 +39,41 @@ type MonitoringConfig struct {
 	EnablePerfMonitor   bool          `json:"enable_perf_monitor"`
 	MetricsInterval     time.Duration `json:"metrics_interval"`
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
-	LogLevel           string        `json:"log_level"`
-	LogFormat          string        `json:"log_format"`
-	Logger             *zap.Logger   `json:"-"`
+	LogLevel            string        `json:"log_level"`
+	LogFormat           string        `json:"log_format"`
+	Logger              *zap.Logger   `json:"-"`
 }
 
 // Metrics contains all application metrics
 type Metrics struct {
 	// HTTP metrics
-	HTTPRequests        int64 `json:"http_requests"`
-	HTTPResponses       int64 `json:"http_responses"`
-	HTTPErrors          int64 `json:"http_errors"`
-	HTTPResponseTime    int64 `json:"http_response_time_ns"`
-	
+	HTTPRequests     int64 `json:"http_requests"`
+	HTTPResponses    int64 `json:"http_responses"`
+	HTTPErrors       int64 `json:"http_errors"`
+	HTTPResponseTime int64 `json:"http_response_time_ns"`
+
 	// Connection metrics
-	ActiveConnections   int64 `json:"active_connections"`
-	TotalConnections    int64 `json:"total_connections"`
-	ConnectionErrors    int64 `json:"connection_errors"`
-	
+	ActiveConnections int64 `json:"active_connections"`
+	TotalConnections  int64 `json:"total_connections"`
+	ConnectionErrors  int64 `json:"connection_errors"`
+
 	// Backend metrics
 	HealthyBackends     int64 `json:"healthy_backends"`
 	UnhealthyBackends   int64 `json:"unhealthy_backends"`
 	BackendResponseTime int64 `json:"backend_response_time_ns"`
-	
+
 	// System metrics
-	MemoryUsage         int64 `json:"memory_usage_bytes"`
-	CPUUsage           int64 `json:"cpu_usage_percent"`
-	GoroutineCount     int64 `json:"goroutine_count"`
-	GCCount            int64 `json:"gc_count"`
-	
+	MemoryUsage    int64 `json:"memory_usage_bytes"`
+	CPUUsage       int64 `json:"cpu_usage_percent"`
+	GoroutineCount int64 `json:"goroutine_count"`
+	GCCount        int64 `json:"gc_count"`
+
 	// Advanced metrics
 	CircuitBreakerTrips int64 `json:"circuit_breaker_trips"`
 	RateLimitHits       int64 `json:"rate_limit_hits"`
-	CacheHits          int64 `json:"cache_hits"`
-	CacheMisses        int64 `json:"cache_misses"`
-	
+	CacheHits           int64 `json:"cache_hits"`
+	CacheMisses         int64 `json:"cache_misses"`
+
 	mu sync.RWMutex
 }
 
@@ -274,16 +274,12 @@ func (m *Monitoring) updateSystemMetrics() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	m.metrics.mu.Lock()
-	m.metrics.MemoryUsage = int64(memStats.Alloc)
-	m.metrics.GoroutineCount = int64(runtime.NumGoroutine())
-	m.metrics.GCCount = int64(memStats.NumGC)
-	m.metrics.mu.Unlock()
+	atomic.StoreInt64(&m.metrics.MemoryUsage, int64(memStats.Alloc))
+	atomic.StoreInt64(&m.metrics.GoroutineCount, int64(runtime.NumGoroutine()))
+	atomic.StoreInt64(&m.metrics.GCCount, int64(memStats.NumGC))
 
 	// Update CPU usage (simplified)
-	m.metrics.mu.Lock()
-	m.metrics.CPUUsage = int64(getCPUUsage())
-	m.metrics.mu.Unlock()
+	atomic.StoreInt64(&m.metrics.CPUUsage, int64(getCPUUsage()))
 }
 
 // runHealthChecks runs health checks periodically
@@ -339,11 +335,7 @@ func (m *Monitoring) checkAlerts() {
 		return
 	}
 
-	m.metrics.mu.RLock()
-	metricsCopy := *m.metrics
-	m.metrics.mu.RUnlock()
-
-	m.alertManager.CheckRules(&metricsCopy)
+	m.alertManager.CheckRules(m.GetMetrics())
 }
 
 // monitorPerformance monitors system performance
@@ -416,7 +408,7 @@ func (m *Monitoring) RecordRequest() {
 func (m *Monitoring) RecordResponse(duration time.Duration, isError bool) {
 	atomic.AddInt64(&m.metrics.HTTPResponses, 1)
 	atomic.AddInt64(&m.metrics.HTTPResponseTime, duration.Nanoseconds())
-	
+
 	if isError {
 		atomic.AddInt64(&m.errorCount, 1)
 		atomic.AddInt64(&m.metrics.HTTPErrors, 1)
@@ -443,10 +435,27 @@ func (m *Monitoring) RecordBackendHealth(healthy bool) {
 }
 
 // GetMetrics returns current metrics
-func (m *Monitoring) GetMetrics() Metrics {
-	m.metrics.mu.RLock()
-	defer m.metrics.mu.RUnlock()
-	return *m.metrics
+func (m *Monitoring) GetMetrics() *Metrics {
+	return &Metrics{
+		HTTPRequests:        atomic.LoadInt64(&m.metrics.HTTPRequests),
+		HTTPResponses:       atomic.LoadInt64(&m.metrics.HTTPResponses),
+		HTTPErrors:          atomic.LoadInt64(&m.metrics.HTTPErrors),
+		HTTPResponseTime:    atomic.LoadInt64(&m.metrics.HTTPResponseTime),
+		ActiveConnections:   atomic.LoadInt64(&m.metrics.ActiveConnections),
+		TotalConnections:    atomic.LoadInt64(&m.metrics.TotalConnections),
+		ConnectionErrors:    atomic.LoadInt64(&m.metrics.ConnectionErrors),
+		HealthyBackends:     atomic.LoadInt64(&m.metrics.HealthyBackends),
+		UnhealthyBackends:   atomic.LoadInt64(&m.metrics.UnhealthyBackends),
+		BackendResponseTime: atomic.LoadInt64(&m.metrics.BackendResponseTime),
+		MemoryUsage:         atomic.LoadInt64(&m.metrics.MemoryUsage),
+		CPUUsage:            atomic.LoadInt64(&m.metrics.CPUUsage),
+		GoroutineCount:      atomic.LoadInt64(&m.metrics.GoroutineCount),
+		GCCount:             atomic.LoadInt64(&m.metrics.GCCount),
+		CircuitBreakerTrips: atomic.LoadInt64(&m.metrics.CircuitBreakerTrips),
+		RateLimitHits:       atomic.LoadInt64(&m.metrics.RateLimitHits),
+		CacheHits:           atomic.LoadInt64(&m.metrics.CacheHits),
+		CacheMisses:         atomic.LoadInt64(&m.metrics.CacheMisses),
+	}
 }
 
 // GetStats returns monitoring statistics
@@ -528,9 +537,9 @@ func (am *AlertManager) CheckRules(metrics *Metrics) {
 func (am *AlertManager) TriggerAlert(alert Alert) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	am.alerts = append(am.alerts, alert)
-	
+
 	// Log alert
 	fields := []zap.Field{
 		zap.String("alert_id", alert.ID),
@@ -538,7 +547,7 @@ func (am *AlertManager) TriggerAlert(alert Alert) {
 		zap.String("message", alert.Message),
 		zap.Time("timestamp", alert.Timestamp),
 	}
-	
+
 	switch alert.Level {
 	case AlertCritical:
 		am.logger.Error("Critical alert", fields...)
@@ -584,7 +593,7 @@ func (pm *PerformanceMonitor) Collect() {
 				zap.Error(err))
 			continue
 		}
-		
+
 		// Process collected data
 		pm.processCollectedData(data)
 	}
@@ -636,32 +645,32 @@ func (a AlertLevel) String() string {
 
 // MonitoringStats contains monitoring statistics
 type MonitoringStats struct {
-	StartTime    time.Time `json:"start_time"`
-	RequestCount int64     `json:"request_count"`
-	ErrorCount   int64     `json:"error_count"`
+	StartTime    time.Time     `json:"start_time"`
+	RequestCount int64         `json:"request_count"`
+	ErrorCount   int64         `json:"error_count"`
 	Uptime       time.Duration `json:"uptime"`
-	Metrics      Metrics   `json:"metrics"`
+	Metrics      *Metrics      `json:"metrics"`
 }
 
 // HTTP handlers for monitoring endpoints
 func (m *Monitoring) HandleMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics := m.GetMetrics()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metrics)
 }
 
 func (m *Monitoring) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	
+
 	if m.healthChecker == nil {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 		return
 	}
-	
+
 	statuses := m.healthChecker.CheckAll(ctx)
-	
+
 	// Check if all checks are healthy
 	allHealthy := true
 	for _, status := range statuses {
@@ -670,13 +679,13 @@ func (m *Monitoring) HandleHealth(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	
+
 	if allHealthy {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
-	
+
 	json.NewEncoder(w).Encode(statuses)
 }
 
@@ -685,12 +694,12 @@ func (m *Monitoring) HandleAlerts(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	
+
 	m.alertManager.mu.RLock()
 	alerts := make([]Alert, len(m.alertManager.alerts))
 	copy(alerts, m.alertManager.alerts)
 	m.alertManager.mu.RUnlock()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(alerts)
 }

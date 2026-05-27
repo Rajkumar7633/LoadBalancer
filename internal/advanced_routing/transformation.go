@@ -606,7 +606,7 @@ func (te *TransformationEngine) setResponseStatus(resp *http.Response, params ma
 	}
 
 	resp.StatusCode = int(statusCode)
-	resp.Status = fmt.Sprintf("%d %s", statusCode, http.StatusText(int(statusCode)))
+	resp.Status = fmt.Sprintf("%d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	return nil
 }
 

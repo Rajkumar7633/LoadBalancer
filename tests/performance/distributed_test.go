@@ -426,10 +426,23 @@ func (dlt *DistributedLoadTester) calculateFinalStatistics() {
 }
 
 // GetStatistics returns current test statistics
-func (dlt *DistributedLoadTester) GetStatistics() TestStatistics {
+func (dlt *DistributedLoadTester) GetStatistics() *TestStatistics {
 	dlt.stats.mutex.RLock()
 	defer dlt.stats.mutex.RUnlock()
-	return *dlt.stats
+	return &TestStatistics{
+		TotalRequests:      dlt.stats.TotalRequests,
+		SuccessfulRequests: dlt.stats.SuccessfulRequests,
+		FailedRequests:     dlt.stats.FailedRequests,
+		TotalBytes:         dlt.stats.TotalBytes,
+		MinLatency:         dlt.stats.MinLatency,
+		MaxLatency:         dlt.stats.MaxLatency,
+		AvgLatency:         dlt.stats.AvgLatency,
+		P95Latency:         dlt.stats.P95Latency,
+		P99Latency:         dlt.stats.P99Latency,
+		RequestsPerSecond:  dlt.stats.RequestsPerSecond,
+		ErrorRate:          dlt.stats.ErrorRate,
+		latencies:          append([]time.Duration(nil), dlt.stats.latencies...),
+	}
 }
 
 // CreateTestConfig100K creates a configuration for 100K RPS test

@@ -290,7 +290,8 @@ func TestWAFManager(t *testing.T) {
 	require.NotNil(t, wm)
 
 	t.Run("SQLInjectionDetection", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/search?q=' OR 1=1 --", nil)
+		req := httptest.NewRequest("GET", "/search", nil)
+		req.URL.RawQuery = "q=' OR 1=1 --"
 		securityCtx := &security.SecurityContext{
 			ClientIP:  "192.168.1.1",
 			UserAgent: "test-agent",
@@ -303,7 +304,8 @@ func TestWAFManager(t *testing.T) {
 	})
 
 	t.Run("XSSDetection", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/comment=<script>alert('xss')</script>", nil)
+		req := httptest.NewRequest("GET", "/comment", nil)
+		req.URL.RawQuery = "comment=<script>alert('xss')</script>"
 		securityCtx := &security.SecurityContext{
 			ClientIP:  "192.168.1.1",
 			UserAgent: "test-agent",
@@ -409,7 +411,7 @@ func TestAuditLogger(t *testing.T) {
 		stats := al.GetStats()
 		assert.Equal(t, "/tmp/test_audit_security.log", stats["log_path"])
 		assert.Equal(t, 1, stats["retention_days"])
-		assert.GreaterOrEqual(t, stats["file_size"], 0)
+		assert.GreaterOrEqual(t, stats["file_size"], int64(0))
 	})
 
 	al.Close()

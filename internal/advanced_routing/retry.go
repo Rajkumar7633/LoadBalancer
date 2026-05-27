@@ -11,13 +11,13 @@ import (
 )
 
 type RetryConfig struct {
-	MaxRetries      int           `json:"max_retries"`
-	InitialDelay    time.Duration `json:"initial_delay"`
-	MaxDelay        time.Duration `json:"max_delay"`
-	Multiplier      float64       `json:"multiplier"`
-	Jitter          bool          `json:"jitter"`
-	RetryableStatus []int         `json:"retryable_status"`
-	RetryableMethods []string     `json:"retryable_methods"`
+	MaxRetries       int           `json:"max_retries"`
+	InitialDelay     time.Duration `json:"initial_delay"`
+	MaxDelay         time.Duration `json:"max_delay"`
+	Multiplier       float64       `json:"multiplier"`
+	Jitter           bool          `json:"jitter"`
+	RetryableStatus  []int         `json:"retryable_status"`
+	RetryableMethods []string      `json:"retryable_methods"`
 }
 
 type RetryResult struct {
@@ -70,10 +70,10 @@ func (re *RetryEngine) ExecuteWithRetry(
 
 	for attempts <= re.config.MaxRetries {
 		attempts++
-		
+
 		// Execute the request
 		resp, err := executeFunc(ctx, req, backend)
-		
+
 		// Check if we should retry
 		if !re.shouldRetry(req, resp, err, attempts) {
 			return &RetryResult{
@@ -94,7 +94,7 @@ func (re *RetryEngine) ExecuteWithRetry(
 
 		// Calculate delay for next attempt
 		delay := re.calculateDelay(attempts - 1)
-		
+
 		// Wait for delay or context cancellation
 		select {
 		case <-ctx.Done():
@@ -153,7 +153,7 @@ func (re *RetryEngine) shouldRetry(req *http.Request, resp *http.Response, err e
 func (re *RetryEngine) calculateDelay(attempt int) time.Duration {
 	// Exponential backoff: delay = initial_delay * multiplier^attempt
 	delay := float64(re.config.InitialDelay) * math.Pow(re.config.Multiplier, float64(attempt))
-	
+
 	// Apply maximum delay limit
 	if delay > float64(re.config.MaxDelay) {
 		delay = float64(re.config.MaxDelay)
@@ -193,18 +193,18 @@ func (s *ExponentialBackoffStrategy) ShouldRetry(attempt int, resp *http.Respons
 	if attempt >= 3 { // Default max retries
 		return false
 	}
-	
+
 	if err != nil {
 		return true
 	}
-	
+
 	// Retry on server errors and rate limiting
 	return resp.StatusCode >= 500 || resp.StatusCode == 429
 }
 
 func (s *ExponentialBackoffStrategy) GetDelay(attempt int) time.Duration {
 	delay := float64(s.InitialDelay) * math.Pow(s.Multiplier, float64(attempt))
-	
+
 	if delay > float64(s.MaxDelay) {
 		delay = float64(s.MaxDelay)
 	}
@@ -229,17 +229,17 @@ func (s *LinearBackoffStrategy) ShouldRetry(attempt int, resp *http.Response, er
 	if attempt >= 3 {
 		return false
 	}
-	
+
 	if err != nil {
 		return true
 	}
-	
+
 	return resp.StatusCode >= 500 || resp.StatusCode == 429
 }
 
 func (s *LinearBackoffStrategy) GetDelay(attempt int) time.Duration {
-	delay := time.Duration(attempt) * s.Increment + s.InitialDelay
-	
+	delay := time.Duration(attempt)*s.Increment + s.InitialDelay
+
 	if delay > s.MaxDelay {
 		delay = s.MaxDelay
 	}
@@ -276,9 +276,9 @@ func (cre *CustomRetryEngine) ExecuteWithRetry(
 
 	for cre.strategy.ShouldRetry(attempts, lastResponse, lastError) {
 		attempts++
-		
+
 		resp, err := executeFunc(ctx, req, backend)
-		
+
 		if !cre.strategy.ShouldRetry(attempts, resp, err) {
 			return &RetryResult{
 				Response: resp,

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"loadbalancer/internal/core"
 	"loadbalancer/internal/advanced_routing"
 	"loadbalancer/internal/backend"
 	"loadbalancer/internal/config"
+	"loadbalancer/internal/core"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ import (
 // TestWorkerPoolIntegration tests worker pool integration
 func TestWorkerPoolIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	
+
 	// Create worker pool
 	config := core.WorkerPoolConfig{
 		Workers:       4,
@@ -63,7 +63,7 @@ func TestWorkerPoolIntegration(t *testing.T) {
 // TestCircuitBreakerIntegration tests circuit breaker integration
 func TestCircuitBreakerIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	
+
 	// Create circuit breaker
 	config := core.DefaultCircuitBreakerConfig("test-circuit")
 	config.Logger = logger
@@ -99,7 +99,7 @@ func TestCircuitBreakerIntegration(t *testing.T) {
 // TestMonitoringIntegration tests monitoring integration
 func TestMonitoringIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	
+
 	// Create monitoring system
 	config := core.MonitoringConfig{
 		EnableMetrics:       true,
@@ -108,9 +108,9 @@ func TestMonitoringIntegration(t *testing.T) {
 		EnablePerfMonitor:   true,
 		MetricsInterval:     1 * time.Second,
 		HealthCheckInterval: 5 * time.Second,
-		LogLevel:           "info",
-		LogFormat:          "json",
-		Logger:             logger,
+		LogLevel:            "info",
+		LogFormat:           "json",
+		Logger:              logger,
 	}
 
 	monitoring, err := core.NewMonitoring(config)
@@ -148,7 +148,7 @@ func TestMonitoringIntegration(t *testing.T) {
 // TestGracefulShutdownIntegration tests graceful shutdown integration
 func TestGracefulShutdownIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	
+
 	// Create graceful shutdown manager
 	config := core.GracefulShutdownConfig{
 		ShutdownTimeout:    10 * time.Second,
@@ -190,7 +190,7 @@ func TestGracefulShutdownIntegration(t *testing.T) {
 func TestBasicIntegration(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	_ = logger // Use logger to avoid unused variable warning
-	
+
 	// Create test backends
 	backend1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -237,7 +237,7 @@ func TestBasicIntegration(t *testing.T) {
 	// Set up backends
 	backend1URL, _ := url.Parse(backend1.URL)
 	backend2URL, _ := url.Parse(backend2.URL)
-	
+
 	backends := []backend.Backend{
 		backend.NewBackend(backend1URL, 1, 100, "/health", 5*time.Second),
 		backend.NewBackend(backend2URL, 1, 100, "/health", 5*time.Second),

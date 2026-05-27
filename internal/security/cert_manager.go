@@ -32,21 +32,21 @@ type CertificateManager struct {
 
 // CertificateManagerConfig contains certificate manager configuration
 type CertificateManagerConfig struct {
-	AutoRenewal   bool     `json:"auto_renewal"`
-	RotationDays  int      `json:"rotation_days"`
-	TLSMinVersion string   `json:"tls_min_version"`
-	TLSCiphers    []string `json:"tls_ciphers"`
+	AutoRenewal   bool        `json:"auto_renewal"`
+	RotationDays  int         `json:"rotation_days"`
+	TLSMinVersion string      `json:"tls_min_version"`
+	TLSCiphers    []string    `json:"tls_ciphers"`
 	Logger        *zap.Logger `json:"-"`
 }
 
 // CertificateInfo contains certificate information
 type CertificateInfo struct {
-	Domain       string    `json:"domain"`
-	Issuer       string    `json:"issuer"`
-	NotBefore    time.Time `json:"not_before"`
-	NotAfter     time.Time `json:"not_after"`
-	DaysRemaining int      `json:"days_remaining"`
-	AutoRenewed  bool      `json:"auto_renewed"`
+	Domain        string    `json:"domain"`
+	Issuer        string    `json:"issuer"`
+	NotBefore     time.Time `json:"not_before"`
+	NotAfter      time.Time `json:"not_after"`
+	DaysRemaining int       `json:"days_remaining"`
+	AutoRenewed   bool      `json:"auto_renewed"`
 }
 
 // NewCertificateManager creates a new certificate manager
@@ -173,9 +173,9 @@ func (cm *CertificateManager) getTLSCiphers() []uint16 {
 	// Map cipher names to IDs
 	cipherMap := map[string]uint16{
 		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384": tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":   tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-		"TLS_RSA_WITH_AES_256_GCM_SHA384":      tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-		"TLS_RSA_WITH_AES_256_CBC_SHA":         tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":    tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		"TLS_RSA_WITH_AES_256_GCM_SHA384":       tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		"TLS_RSA_WITH_AES_256_CBC_SHA":          tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 	}
 
 	var ciphers []uint16

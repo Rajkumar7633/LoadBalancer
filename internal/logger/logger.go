@@ -8,9 +8,9 @@ import (
 )
 
 type Logger struct {
-	level     string
+	level      string
 	structured bool
-	logger    *log.Logger
+	logger     *log.Logger
 }
 
 func NewLogger() *Logger {
@@ -44,18 +44,18 @@ func (l *Logger) Fatal(msg string, keyvals ...interface{}) {
 
 func (l *Logger) log(level, msg string, keyvals ...interface{}) {
 	timestamp := time.Now().UTC().Format(time.RFC3339)
-	
+
 	if l.structured {
 		// Structured JSON logging
 		logEntry := fmt.Sprintf(`{"timestamp":"%s","level":"%s","message":"%s"`, timestamp, level, msg)
-		
+
 		// Add key-value pairs
 		for i := 0; i < len(keyvals); i += 2 {
 			if i+1 < len(keyvals) {
 				logEntry += fmt.Sprintf(`,"%s":"%v"`, keyvals[i], keyvals[i+1])
 			}
 		}
-		
+
 		logEntry += "}"
 		l.logger.Println(logEntry)
 	} else {

@@ -479,8 +479,12 @@ func TestMemoryLeak(t *testing.T) {
 		t.Logf("  Final Memory: %d MB", finalMemory/1024/1024)
 		t.Logf("  Memory Growth: %d MB (%.2f%%)", memoryGrowth/1024/1024, memoryGrowthRate)
 
-		// Assert memory growth is reasonable (less than 50% growth)
-		assert.Less(t, memoryGrowthRate, 50.0, "Memory growth should be less than 50%")
+		// For small baselines, tiny absolute changes can look like huge percentages.
+		if initialMemory < 10*1024*1024 {
+			assert.Less(t, memoryGrowth, int64(5*1024*1024), "memory growth should stay below 5 MB")
+		} else {
+			assert.Less(t, memoryGrowthRate, 50.0, "memory growth should be less than 50%")
+		}
 	}
 }
 

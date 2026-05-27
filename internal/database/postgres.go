@@ -449,10 +449,11 @@ func (pg *PostgreSQL) GetDatabaseStats(ctx context.Context) (map[string]interfac
 	stats := make(map[string]interface{})
 
 	// Get connection pool stats
-	stats["max_open_connections"] = pg.db.Stats.MaxOpenConnections
-	stats["open_connections"] = pg.db.Stats.OpenConnections
-	stats["in_use"] = pg.db.Stats.InUse
-	stats["idle"] = pg.db.Stats.Idle
+	dbStats := pg.db.Stats()
+	stats["max_open_connections"] = dbStats.MaxOpenConnections
+	stats["open_connections"] = dbStats.OpenConnections
+	stats["in_use"] = dbStats.InUse
+	stats["idle"] = dbStats.Idle
 
 	// Get table sizes with proper error handling and existence checks
 	tables := []string{"metrics", "backend_status", "security_events", "autoscaling_events", "endpoint_stats"}

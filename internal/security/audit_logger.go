@@ -20,25 +20,25 @@ type AuditLogger struct {
 
 // AuditLoggerConfig contains audit logger configuration
 type AuditLoggerConfig struct {
-	LogPath       string `json:"log_path"`
-	RetentionDays int    `json:"retention_days"`
+	LogPath       string      `json:"log_path"`
+	RetentionDays int         `json:"retention_days"`
 	Logger        *zap.Logger `json:"-"`
 }
 
 // AuditEvent represents a security audit event
 type AuditEvent struct {
-	Timestamp   time.Time                 `json:"timestamp"`
-	Event       string                    `json:"event"`
-	ClientIP    string                    `json:"client_ip"`
-	UserAgent   string                    `json:"user_agent"`
-	RequestID   string                    `json:"request_id"`
-	UserID      string                    `json:"user_id,omitempty"`
-	Username    string                    `json:"username,omitempty"`
-	Blocked     bool                      `json:"blocked"`
-	BlockReason string                    `json:"block_reason,omitempty"`
-	RiskScore   float64                   `json:"risk_score"`
-	Error       string                    `json:"error,omitempty"`
-	Metadata    map[string]interface{}    `json:"metadata,omitempty"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Event       string                 `json:"event"`
+	ClientIP    string                 `json:"client_ip"`
+	UserAgent   string                 `json:"user_agent"`
+	RequestID   string                 `json:"request_id"`
+	UserID      string                 `json:"user_id,omitempty"`
+	Username    string                 `json:"username,omitempty"`
+	Blocked     bool                   `json:"blocked"`
+	BlockReason string                 `json:"block_reason,omitempty"`
+	RiskScore   float64                `json:"risk_score"`
+	Error       string                 `json:"error,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // NewAuditLogger creates a new audit logger

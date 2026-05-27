@@ -23,20 +23,20 @@ type Limiter struct {
 }
 
 type TokenBucket struct {
-	capacity      int
-	tokens        int
-	refillRate    int
-	lastRefill    time.Time
-	window        time.Duration
-	requestCount  int
-	windowStart   time.Time
-	mu            sync.Mutex
+	capacity     int
+	tokens       int
+	refillRate   int
+	lastRefill   time.Time
+	window       time.Duration
+	requestCount int
+	windowStart  time.Time
+	mu           sync.Mutex
 }
 
 type RateLimitResult struct {
-	Allowed   bool
-	Remaining int
-	ResetTime time.Time
+	Allowed    bool
+	Remaining  int
+	ResetTime  time.Time
 	RetryAfter time.Duration
 }
 
@@ -57,36 +57,36 @@ func NewLimiter(cfg config.RateLimitConfig, logger *logger.Logger, metrics *metr
 
 func (l *Limiter) Allow(r *http.Request) bool {
 	clientKey := l.getClientKey(r)
-	
+
 	// Get or create token bucket for client
 	bucket := l.getBucket(clientKey)
-	
+
 	// Check if request is allowed
 	allowed := bucket.consume()
-	
+
 	if !allowed {
 		l.logger.Warn("Rate limit exceeded", "client_key", clientKey, "tokens", bucket.tokens)
 		l.metrics.RecordRateLimitHit(clientKey, "token_bucket")
 	}
-	
+
 	return allowed
 }
 
 func (l *Limiter) GetRateLimitStatus(r *http.Request) RateLimitResult {
 	clientKey := l.getClientKey(r)
 	bucket := l.getBucket(clientKey)
-	
+
 	bucket.mu.Lock()
 	defer bucket.mu.Unlock()
-	
+
 	remaining := bucket.tokens
 	if remaining < 0 {
 		remaining = 0
 	}
-	
+
 	resetTime := bucket.lastRefill.Add(time.Second)
 	retryAfter := time.Second
-	
+
 	return RateLimitResult{
 		Allowed:    bucket.tokens > 0,
 		Remaining:  remaining,
@@ -98,11 +98,11 @@ func (l *Limiter) GetRateLimitStatus(r *http.Request) RateLimitResult {
 func (l *Limiter) getClientKey(r *http.Request) string {
 	// Try to get client IP from various headers
 	clientIP := getClientIP(r)
-	
+
 	// Additional identification from headers for more sophisticated rate limiting
 	userAgent := r.Header.Get("User-Agent")
 	apiKey := r.Header.Get("X-API-Key")
-	
+
 	// Create composite key for more precise rate limiting
 	key := clientIP
 	if apiKey != "" {
@@ -111,14 +111,14 @@ func (l *Limiter) getClientKey(r *http.Request) string {
 		hash := sha256.Sum256([]byte(userAgent))
 		key = "ua:" + hex.EncodeToString(hash[:8])
 	}
-	
+
 	return key
 }
 
 func (l *Limiter) getBucket(clientKey string) *TokenBucket {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	bucket, exists := l.buckets[clientKey]
 	if !exists {
 		bucket = &TokenBucket{
@@ -131,20 +131,20 @@ func (l *Limiter) getBucket(clientKey string) *TokenBucket {
 		}
 		l.buckets[clientKey] = bucket
 	}
-	
+
 	return bucket
 }
 
 func (b *TokenBucket) consume() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Refill tokens based on time elapsed
 	elapsed := now.Sub(b.lastRefill)
 	tokensToAdd := int(elapsed.Seconds() * float64(b.refillRate))
-	
+
 	if tokensToAdd > 0 {
 		b.tokens += tokensToAdd
 		if b.tokens > b.capacity {
@@ -152,20 +152,20 @@ func (b *TokenBucket) consume() bool {
 		}
 		b.lastRefill = now
 	}
-	
+
 	// Check window-based rate limiting
 	if now.Sub(b.windowStart) >= b.window {
 		b.requestCount = 0
 		b.windowStart = now
 	}
-	
+
 	// Check if request is allowed
 	if b.tokens > 0 && b.requestCount < b.capacity {
 		b.tokens--
 		b.requestCount++
 		return true
 	}
-	
+
 	return false
 }
 
@@ -181,10 +181,10 @@ func (l *Limiter) cleanup() {
 func (l *Limiter) cleanupExpiredBuckets() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	now := time.Now()
 	expiredKeys := make([]string, 0)
-	
+
 	for key, bucket := range l.buckets {
 		bucket.mu.Lock()
 		// Remove buckets that haven't been used for 10 minutes
@@ -193,11 +193,11 @@ func (l *Limiter) cleanupExpiredBuckets() {
 		}
 		bucket.mu.Unlock()
 	}
-	
+
 	for _, key := range expiredKeys {
 		delete(l.buckets, key)
 	}
-	
+
 	if len(expiredKeys) > 0 {
 		l.logger.Debug("Cleaned up expired rate limit buckets", "count", len(expiredKeys))
 	}
@@ -228,22 +228,22 @@ func getClientIP(r *http.Request) string {
 			return xff
 		}
 	}
-	
+
 	// Check X-Real-IP header
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return xri
 	}
-	
+
 	// Check Cloudflare headers
 	if cf := r.Header.Get("CF-Connecting-IP"); cf != "" {
 		return cf
 	}
-	
+
 	// Parse RemoteAddr
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		return host
 	}
-	
+
 	return r.RemoteAddr
 }
 
@@ -259,9 +259,9 @@ type AdvancedLimiter struct {
 
 func NewAdvancedLimiter(cfg config.RateLimitConfig, logger *logger.Logger, metrics *metrics.Collector) *AdvancedLimiter {
 	baseLimiter := NewLimiter(cfg, logger, metrics)
-	
+
 	advanced := &AdvancedLimiter{
-		Limiter:      baseLimiter,
+		Limiter: baseLimiter,
 		globalBucket: &TokenBucket{
 			capacity:    cfg.BurstSize * 10, // Global limit is higher
 			tokens:      cfg.BurstSize * 10,
@@ -274,7 +274,7 @@ func NewAdvancedLimiter(cfg config.RateLimitConfig, logger *logger.Logger, metri
 		pathLimits: make(map[string]*TokenBucket),
 		userLimits: make(map[string]*TokenBucket),
 	}
-	
+
 	return advanced
 }
 
@@ -285,7 +285,7 @@ func (al *AdvancedLimiter) AllowAdvanced(r *http.Request) bool {
 		al.metrics.RecordRateLimitHit("global", "global")
 		return false
 	}
-	
+
 	// Check path-specific rate limits
 	pathKey := r.URL.Path
 	pathBucket := al.getPathBucket(pathKey)
@@ -294,7 +294,7 @@ func (al *AdvancedLimiter) AllowAdvanced(r *http.Request) bool {
 		al.metrics.RecordRateLimitHit("path:"+pathKey, "path")
 		return false
 	}
-	
+
 	// Check user-specific rate limits if user is authenticated
 	if userID := r.Header.Get("X-User-ID"); userID != "" {
 		userBucket := al.getUserBucket(userID)
@@ -304,7 +304,7 @@ func (al *AdvancedLimiter) AllowAdvanced(r *http.Request) bool {
 			return false
 		}
 	}
-	
+
 	// Check geo-based rate limits
 	if country := r.Header.Get("CF-IPCountry"); country != "" {
 		geoBucket := al.getGeoBucket(country)
@@ -314,7 +314,7 @@ func (al *AdvancedLimiter) AllowAdvanced(r *http.Request) bool {
 			return false
 		}
 	}
-	
+
 	// Fall back to standard client-based rate limiting
 	return al.Allow(r)
 }
@@ -322,7 +322,7 @@ func (al *AdvancedLimiter) AllowAdvanced(r *http.Request) bool {
 func (al *AdvancedLimiter) getPathBucket(path string) *TokenBucket {
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	bucket, exists := al.pathLimits[path]
 	if !exists {
 		bucket = &TokenBucket{
@@ -335,14 +335,14 @@ func (al *AdvancedLimiter) getPathBucket(path string) *TokenBucket {
 		}
 		al.pathLimits[path] = bucket
 	}
-	
+
 	return bucket
 }
 
 func (al *AdvancedLimiter) getUserBucket(userID string) *TokenBucket {
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	bucket, exists := al.userLimits[userID]
 	if !exists {
 		bucket = &TokenBucket{
@@ -355,14 +355,14 @@ func (al *AdvancedLimiter) getUserBucket(userID string) *TokenBucket {
 		}
 		al.userLimits[userID] = bucket
 	}
-	
+
 	return bucket
 }
 
 func (al *AdvancedLimiter) getGeoBucket(country string) *TokenBucket {
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	bucket, exists := al.geoLimits[country]
 	if !exists {
 		bucket = &TokenBucket{
@@ -375,6 +375,6 @@ func (al *AdvancedLimiter) getGeoBucket(country string) *TokenBucket {
 		}
 		al.geoLimits[country] = bucket
 	}
-	
+
 	return bucket
 }

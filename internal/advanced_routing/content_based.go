@@ -21,34 +21,34 @@ type RoutingRule struct {
 }
 
 type RouteCondition struct {
-	PathMatch    *PathMatch    `json:"path_match,omitempty"`
-	HeaderMatch  *HeaderMatch  `json:"header_match,omitempty"`
-	QueryMatch   *QueryMatch   `json:"query_match,omitempty"`
-	MethodMatch  []string      `json:"method_match,omitempty"`
-	BodyMatch    *BodyMatch    `json:"body_match,omitempty"`
+	PathMatch   *PathMatch   `json:"path_match,omitempty"`
+	HeaderMatch *HeaderMatch `json:"header_match,omitempty"`
+	QueryMatch  *QueryMatch  `json:"query_match,omitempty"`
+	MethodMatch []string     `json:"method_match,omitempty"`
+	BodyMatch   *BodyMatch   `json:"body_match,omitempty"`
 }
 
 type PathMatch struct {
-	Type   string   `json:"type"`   // "exact", "prefix", "regex", "suffix"
+	Type   string   `json:"type"` // "exact", "prefix", "regex", "suffix"
 	Values []string `json:"values"`
 }
 
 type HeaderMatch struct {
-	Name    string   `json:"name"`
-	Type    string   `json:"type"`    // "exact", "regex", "contains"
-	Values  []string `json:"values"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"` // "exact", "regex", "contains"
+	Values []string `json:"values"`
 }
 
 type QueryMatch struct {
-	Name    string   `json:"name"`
-	Type    string   `json:"type"`    // "exact", "regex", "contains"
-	Values  []string `json:"values"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"` // "exact", "regex", "contains"
+	Values []string `json:"values"`
 }
 
 type BodyMatch struct {
-	Type     string `json:"type"`     // "json", "regex", "contains"
-	Field    string `json:"field"`    // for JSON type
-	Pattern  string `json:"pattern"`
+	Type    string `json:"type"`  // "json", "regex", "contains"
+	Field   string `json:"field"` // for JSON type
+	Pattern string `json:"pattern"`
 }
 
 func NewContentBasedRouter() *ContentBasedRouter {

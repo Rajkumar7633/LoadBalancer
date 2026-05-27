@@ -13,28 +13,28 @@ import (
 
 // WorkerPool represents a production-grade goroutine pool
 type WorkerPool struct {
-	workers       int
-	taskQueue     chan Task
-	workerQueue   chan chan Task
-	quit          chan bool
-	wg            sync.WaitGroup
-	mu            sync.RWMutex
-	
+	workers     int
+	taskQueue   chan Task
+	workerQueue chan chan Task
+	quit        chan bool
+	wg          sync.WaitGroup
+	mu          sync.RWMutex
+
 	// Metrics
-	activeWorkers   int32
-	totalTasks      int64
-	completedTasks  int64
-	failedTasks     int64
-	
+	activeWorkers  int32
+	totalTasks     int64
+	completedTasks int64
+	failedTasks    int64
+
 	// Configuration
-	maxQueueSize    int
-	workerTimeout   time.Duration
-	enableMetrics   bool
-	logger          *zap.Logger
-	
+	maxQueueSize  int
+	workerTimeout time.Duration
+	enableMetrics bool
+	logger        *zap.Logger
+
 	// Worker management
-	workersList     []*Worker
-	workerPool      sync.Pool
+	workersList []*Worker
+	workerPool  sync.Pool
 }
 
 // Task represents a unit of work
@@ -57,11 +57,11 @@ type Worker struct {
 
 // WorkerPoolConfig contains configuration for the worker pool
 type WorkerPoolConfig struct {
-	Workers         int
-	MaxQueueSize    int
-	WorkerTimeout   time.Duration
-	EnableMetrics   bool
-	Logger          *zap.Logger
+	Workers       int
+	MaxQueueSize  int
+	WorkerTimeout time.Duration
+	EnableMetrics bool
+	Logger        *zap.Logger
 }
 
 // NewWorkerPool creates a new production-grade worker pool
@@ -100,7 +100,7 @@ func NewWorkerPool(config WorkerPoolConfig) *WorkerPool {
 
 // Start starts the worker pool
 func (wp *WorkerPool) Start() {
-	wp.logger.Info("Starting worker pool", 
+	wp.logger.Info("Starting worker pool",
 		zap.Int("workers", wp.workers),
 		zap.Int("max_queue_size", wp.maxQueueSize))
 
@@ -123,7 +123,7 @@ func (wp *WorkerPool) Stop() {
 
 	// Signal all workers to stop
 	close(wp.quit)
-	
+
 	// Wait for all workers to finish
 	done := make(chan struct{})
 	go func() {
@@ -275,7 +275,7 @@ func (w *Worker) executeTask(task Task) {
 					zap.String("task_id", task.ID),
 					zap.Int("attempt", attempt+1),
 					zap.Error(err))
-				
+
 				// Exponential backoff
 				backoff := time.Duration(attempt+1) * 100 * time.Millisecond
 				select {
@@ -367,7 +367,7 @@ func (wp *WorkerPool) Resize(newSize int) {
 // Health check for the worker pool
 func (wp *WorkerPool) Health() error {
 	stats := wp.GetStats()
-	
+
 	// Check if worker pool is responsive
 	if stats.Workers == 0 {
 		return fmt.Errorf("no workers available")

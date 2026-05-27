@@ -25,10 +25,10 @@ type SlowStartBackend struct {
 }
 
 type SlowStartManager struct {
-	config    SlowStartConfig
-	backends  map[string]*SlowStartBackend
-	mu        sync.RWMutex
-	stopChan  chan struct{}
+	config   SlowStartConfig
+	backends map[string]*SlowStartBackend
+	mu       sync.RWMutex
+	stopChan chan struct{}
 }
 
 func NewSlowStartManager(config SlowStartConfig) *SlowStartManager {
@@ -167,7 +167,7 @@ func (ssm *SlowStartManager) GetSlowStartStats() map[string]SlowStartStats {
 	for key, ssBackend := range ssm.backends {
 		progress := float64(ssBackend.currentWeight) / float64(ssBackend.originalWeight)
 		elapsed := time.Since(ssBackend.startTime)
-		
+
 		stats[key] = SlowStartStats{
 			OriginalWeight: ssBackend.originalWeight,
 			CurrentWeight:  ssBackend.currentWeight,
@@ -182,19 +182,19 @@ func (ssm *SlowStartManager) GetSlowStartStats() map[string]SlowStartStats {
 }
 
 type SlowStartStats struct {
-	OriginalWeight int         `json:"original_weight"`
-	CurrentWeight  int         `json:"current_weight"`
-	Progress       float64     `json:"progress"`
-	StartTime      time.Time   `json:"start_time"`
+	OriginalWeight int           `json:"original_weight"`
+	CurrentWeight  int           `json:"current_weight"`
+	Progress       float64       `json:"progress"`
+	StartTime      time.Time     `json:"start_time"`
 	Elapsed        time.Duration `json:"elapsed"`
-	InSlowStart    bool        `json:"in_slow_start"`
+	InSlowStart    bool          `json:"in_slow_start"`
 }
 
 // WeightedSlowStartRouter integrates slow start with weighted routing
 type WeightedSlowStartRouter struct {
-	backends       []backend.Backend
-	slowStartMgr   *SlowStartManager
-	mu             sync.RWMutex
+	backends     []backend.Backend
+	slowStartMgr *SlowStartManager
+	mu           sync.RWMutex
 }
 
 func NewWeightedSlowStartRouter(slowStartConfig SlowStartConfig) *WeightedSlowStartRouter {

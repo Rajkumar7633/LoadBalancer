@@ -19,12 +19,12 @@ const (
 )
 
 type PriorityRequest struct {
-	RequestID    string
-	Priority     Priority
-	ArrivalTime  time.Time
-	ExpiryTime   time.Time
-	Backend      backend.Backend
-	Index        int // For heap interface
+	RequestID   string
+	Priority    Priority
+	ArrivalTime time.Time
+	ExpiryTime  time.Time
+	Backend     backend.Backend
+	Index       int // For heap interface
 }
 
 type PriorityQueue struct {
@@ -119,20 +119,20 @@ func (pq *PriorityQueue) Size() int {
 }
 
 type PriorityConfig struct {
-	Enabled           bool          `json:"enabled"`
-	QueueSize         int           `json:"queue_size"`
-	ExpiryTime        time.Duration `json:"expiry_time"`
-	PriorityHeaders   map[string]Priority `json:"priority_headers"`
-	PriorityPaths     map[string]Priority `json:"priority_paths"`
-	DefaultPriority   Priority      `json:"default_priority"`
-	LoadShedding      LoadSheddingConfig `json:"load_shedding"`
+	Enabled         bool                `json:"enabled"`
+	QueueSize       int                 `json:"queue_size"`
+	ExpiryTime      time.Duration       `json:"expiry_time"`
+	PriorityHeaders map[string]Priority `json:"priority_headers"`
+	PriorityPaths   map[string]Priority `json:"priority_paths"`
+	DefaultPriority Priority            `json:"default_priority"`
+	LoadShedding    LoadSheddingConfig  `json:"load_shedding"`
 }
 
 type LoadSheddingConfig struct {
-	Enabled           bool          `json:"enabled"`
-	Threshold         float64       `json:"threshold"`        // CPU/memory threshold
-	ShedPriority      Priority      `json:"shed_priority"`    // Priority to start shedding
-	ShedPercentage    float64       `json:"shed_percentage"`  // Percentage to shed
+	Enabled        bool     `json:"enabled"`
+	Threshold      float64  `json:"threshold"`       // CPU/memory threshold
+	ShedPriority   Priority `json:"shed_priority"`   // Priority to start shedding
+	ShedPercentage float64  `json:"shed_percentage"` // Percentage to shed
 }
 
 type PriorityRouter struct {
@@ -144,13 +144,13 @@ type PriorityRouter struct {
 }
 
 type PriorityStats struct {
-	TotalRequests     int64     `json:"total_requests"`
-	ProcessedRequests int64     `json:"processed_requests"`
-	RejectedRequests  int64     `json:"rejected_requests"`
-	LoadShedRequests  int64     `json:"load_shed_requests"`
-	QueueSize         int       `json:"queue_size"`
+	TotalRequests     int64         `json:"total_requests"`
+	ProcessedRequests int64         `json:"processed_requests"`
+	RejectedRequests  int64         `json:"rejected_requests"`
+	LoadShedRequests  int64         `json:"load_shed_requests"`
+	QueueSize         int           `json:"queue_size"`
 	AverageWaitTime   time.Duration `json:"average_wait_time"`
-	LastUpdated       time.Time `json:"last_updated"`
+	LastUpdated       time.Time     `json:"last_updated"`
 }
 
 func NewPriorityRouter(config PriorityConfig) *PriorityRouter {
@@ -175,10 +175,10 @@ func NewPriorityRouter(config PriorityConfig) *PriorityRouter {
 	}
 	if config.PriorityPaths == nil {
 		config.PriorityPaths = map[string]Priority{
-			"/health": PriorityFree,
-			"/api/v1/": PriorityBasic,
-			"/api/v2/": PriorityPremium,
-			"/admin/":  PriorityVIP,
+			"/health":    PriorityFree,
+			"/api/v1/":   PriorityBasic,
+			"/api/v2/":   PriorityPremium,
+			"/admin/":    PriorityVIP,
 			"/internal/": PriorityInternal,
 		}
 	}
@@ -315,7 +315,7 @@ func (pr *PriorityRouter) selectBackend() backend.Backend {
 func (pr *PriorityRouter) GetStats() PriorityStats {
 	pr.mu.RLock()
 	defer pr.mu.RUnlock()
-	
+
 	stats := pr.stats
 	stats.QueueSize = pr.priorityQueue.Size()
 	return stats
@@ -389,7 +389,7 @@ func (tbm *TieredBackendManager) GetAnyBackend() backend.Backend {
 
 	// Try from highest to lowest priority
 	priorities := []Priority{PriorityInternal, PriorityVIP, PriorityPremium, PriorityBasic, PriorityFree}
-	
+
 	for _, priority := range priorities {
 		if backend := tbm.GetBackend(priority); backend != nil {
 			return backend
