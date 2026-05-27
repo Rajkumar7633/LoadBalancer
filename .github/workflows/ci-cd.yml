@@ -150,8 +150,8 @@ jobs:
 
       - name: Install load testing tools
         run: |
-          go install github.com/rakyll/hey@latest
-          go install github.com/tsenart/vegeta@latest
+          go install github.com/rakyll/hey@v0.1.4
+          go install github.com/tsenart/vegeta/v12@v12.12.0
 
       - name: Run medium load test (10K RPS)
         run: |
